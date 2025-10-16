@@ -1,0 +1,15 @@
+# Ignore PyCharm project settings
+.idea/
+!.idea/codeStyles/
+!.idea/runConfigurations/
+!.idea/inspectionProfiles/
+!.idea/vcs.xml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+venv/
+.env
