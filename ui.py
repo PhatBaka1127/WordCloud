@@ -12,22 +12,30 @@ class WordCloudUI:
     def _setup_ui(self):
         self.root.title("WordCloud Input")
         self.root.resizable(False, False)
-        self._center_window(400, 450)
+        self._center_window(420, 450)
 
-        tk.Label(self.root, text="Từ:").pack(pady=5)
-        self.entry_word = tk.Entry(self.root, width=30)
-        self.entry_word.pack(pady=5)
+        # ---- Frame nhập liệu ----
+        input_frame = tk.Frame(self.root)
+        input_frame.pack(pady=15)
 
-        tk.Label(self.root, text="Số lượng:").pack(pady=5)
-        self.entry_count = tk.Entry(self.root, width=30)
-        self.entry_count.pack(pady=5)
+        # Dòng 1: Label + Entry "Từ"
+        tk.Label(input_frame, text="Từ:", width=10, anchor="w").grid(row=0, column=0, padx=5, pady=5)
+        self.entry_word = tk.Entry(input_frame, width=30)
+        self.entry_word.grid(row=0, column=1, padx=5, pady=5)
 
+        # Dòng 2: Label + Entry "Số lượng"
+        tk.Label(input_frame, text="Số lượng:", width=10, anchor="w").grid(row=1, column=0, padx=5, pady=5)
+        self.entry_count = tk.Entry(input_frame, width=30)
+        self.entry_count.grid(row=1, column=1, padx=5, pady=5)
+
+        # ---- Nút thao tác ----
         frame_btn = tk.Frame(self.root)
         frame_btn.pack(pady=10)
 
         ttk.Button(frame_btn, text="Thêm / Cập nhật", command=self.add_or_update).grid(row=0, column=0, padx=5)
         ttk.Button(frame_btn, text="Xóa", command=self.delete_word).grid(row=0, column=1, padx=5)
 
+        # ---- Danh sách từ ----
         self.listbox = tk.Listbox(self.root, width=40, height=15)
         self.listbox.pack(pady=10)
         self.listbox.bind("<<ListboxSelect>>", self.on_select)
@@ -39,6 +47,7 @@ class WordCloudUI:
         y = int((screen_h / 2) - (height / 2))
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
+    # --- Các hàm logic (giữ nguyên như trước) ---
     def refresh_listbox(self):
         self.listbox.delete(0, tk.END)
         for w, c in self.data_manager.get_all():
