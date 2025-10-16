@@ -1,44 +1,72 @@
-# ui.py
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
+from wordcloud import WordCloud
+from PIL import Image, ImageTk
+import io
 
 class WordCloudUI:
     def __init__(self, root, data_manager):
         self.root = root
         self.data_manager = data_manager
         self.selected_index = None
+        self.wordcloud_image = None
+        self.last_wordcloud = None
         self._setup_ui()
 
     def _setup_ui(self):
-        self.root.title("WordCloud Input")
+        self.root.title("WordCloud")
         self.root.resizable(False, False)
-        self._center_window(420, 450)
+        self._center_window(1200, 600)
 
-        # ---- Frame nhập liệu ----
-        input_frame = tk.Frame(self.root)
-        input_frame.pack(pady=15)
+        main_frame = tk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Dòng 1: Label + Entry "Từ"
-        tk.Label(input_frame, text="Từ:", width=10, anchor="w").grid(row=0, column=0, padx=5, pady=5)
-        self.entry_word = tk.Entry(input_frame, width=30)
+        main_frame.columnconfigure(0, weight=1, uniform="group1")
+        main_frame.columnconfigure(1, weight=2, uniform="group1")
+
+        # ---- KHUNG TRÁI ----
+        left_frame = tk.Frame(main_frame)
+        left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+
+        form_frame = tk.LabelFrame(left_frame, text="Nhập dữ liệu", padx=10, pady=10)
+        form_frame.pack(fill="x", pady=10)
+
+        tk.Label(form_frame, text="Từ:", width=10, anchor="w").grid(row=0, column=0, padx=5, pady=5)
+        self.entry_word = tk.Entry(form_frame, width=25)
         self.entry_word.grid(row=0, column=1, padx=5, pady=5)
 
-        # Dòng 2: Label + Entry "Số lượng"
-        tk.Label(input_frame, text="Số lượng:", width=10, anchor="w").grid(row=1, column=0, padx=5, pady=5)
-        self.entry_count = tk.Entry(input_frame, width=30)
+        tk.Label(form_frame, text="Số lượng:", width=10, anchor="w").grid(row=1, column=0, padx=5, pady=5)
+        self.entry_count = tk.Entry(form_frame, width=25)
         self.entry_count.grid(row=1, column=1, padx=5, pady=5)
 
-        # ---- Nút thao tác ----
-        frame_btn = tk.Frame(self.root)
-        frame_btn.pack(pady=10)
+        btn_frame = tk.Frame(left_frame)
+        btn_frame.pack(pady=10)
+        ttk.Button(btn_frame, text="Thêm / Cập nhật", command=self.add_or_update).grid(row=0, column=0, padx=5)
+        ttk.Button(btn_frame, text="Xóa", command=self.delete_word).grid(row=0, column=1, padx=5)
+        ttk.Button(btn_frame, text="Tạo WordCloud", command=self.generate_wordcloud).grid(row=0, column=2, padx=5)
 
-        ttk.Button(frame_btn, text="Thêm / Cập nhật", command=self.add_or_update).grid(row=0, column=0, padx=5)
-        ttk.Button(frame_btn, text="Xóa", command=self.delete_word).grid(row=0, column=1, padx=5)
-
-        # ---- Danh sách từ ----
-        self.listbox = tk.Listbox(self.root, width=40, height=15)
-        self.listbox.pack(pady=10)
+        list_frame = tk.LabelFrame(left_frame, text="Danh sách từ", padx=5, pady=5)
+        list_frame.pack(fill="both", expand=True, pady=10)
+        self.listbox = tk.Listbox(list_frame, width=40, height=20)
+        self.listbox.pack(side=tk.LEFT, fill="both", expand=True, padx=5, pady=5)
         self.listbox.bind("<<ListboxSelect>>", self.on_select)
+
+        # ---- KHUNG PHẢI ----
+        right_frame = tk.LabelFrame(main_frame, text="WordCloud Preview", padx=10, pady=10)
+        right_frame.grid(row=0, column=1, sticky="nsew")
+
+        self.image_label = tk.Label(
+            right_frame,
+            bg="#f4f4f4",
+            width=80,
+            height=30,
+            relief="sunken",
+            text="(WordCloud sẽ hiển thị ở đây)"
+        )
+        self.image_label.pack(fill="both", expand=True)
+
+        # ➕ Nút Xuất file ảnh
+        ttk.Button(right_frame, text="💾 Xuất file ảnh (.png)", command=self.save_wordcloud).pack(pady=10)
 
     def _center_window(self, width, height):
         screen_w = self.root.winfo_screenwidth()
@@ -47,7 +75,6 @@ class WordCloudUI:
         y = int((screen_h / 2) - (height / 2))
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
-    # --- Các hàm logic (giữ nguyên như trước) ---
     def refresh_listbox(self):
         self.listbox.delete(0, tk.END)
         for w, c in self.data_manager.get_all():
@@ -94,3 +121,37 @@ class WordCloudUI:
         self.refresh_listbox()
         self.clear_inputs()
         self.selected_index = None
+
+    def generate_wordcloud(self):
+        words = {w: c for w, c in self.data_manager.get_all()}
+        if not words:
+            messagebox.showwarning("Trống", "Không có từ nào để tạo WordCloud!")
+            return
+
+        wc = WordCloud(width=900, height=500, background_color="white", colormap="plasma")
+        wc.generate_from_frequencies(words)
+        self.last_wordcloud = wc  # lưu lại để export sau
+
+        img_buf = io.BytesIO()
+        wc.to_image().save(img_buf, format="PNG")
+        img_buf.seek(0)
+        image = Image.open(img_buf)
+        image = image.resize((700, 450))
+        self.wordcloud_image = ImageTk.PhotoImage(image)
+        self.image_label.config(image=self.wordcloud_image, text="")
+
+    def save_wordcloud(self):
+        if self.last_wordcloud is None:
+            messagebox.showinfo("Chưa có ảnh", "Hãy tạo WordCloud trước khi lưu!")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG files", "*.png")],
+            title="Lưu WordCloud thành ảnh"
+        )
+        if not file_path:
+            return
+
+        self.last_wordcloud.to_file(file_path)
+        messagebox.showinfo("Thành công", f"Đã lưu file ảnh:\n{file_path}")
